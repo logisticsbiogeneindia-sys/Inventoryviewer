@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import os
+from datetime import datetime  # Import datetime for timestamp
 
 # Config - Apply vibrant theme to the Streamlit app
 st.set_page_config(page_title="Inventory Viewer", layout="wide", initial_sidebar_state="expanded")
@@ -63,6 +64,9 @@ password = st.sidebar.text_input("Enter Password to Upload File", type="password
 # Correct password for uploading
 correct_password = "426344"
 
+# Initialize upload_time variable
+upload_time = None
+
 # Only show upload button if password is correct
 if password == correct_password:
     # File upload in the sidebar
@@ -72,7 +76,11 @@ if password == correct_password:
     if uploaded_file is not None:
         with open(UPLOAD_PATH, "wb") as f:
             f.write(uploaded_file.getbuffer())
-        st.sidebar.success("✅ File uploaded & replaced!")
+        
+        # Get the current date and time of upload
+        upload_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        st.sidebar.success(f"✅ File uploaded & replaced at {upload_time}!")
+
 else:
     if password:
         st.sidebar.error("❌ Incorrect password!")
@@ -82,6 +90,11 @@ col1, col2 = st.columns([2, 1])
 
 with col1:
     st.subheader("📂 **Inventory Data Viewer**")
+    
+    # Show last upload time if available
+    if upload_time:
+        st.markdown(f"🕒 **Last Uploaded At:** {upload_time}")
+
     if os.path.exists(UPLOAD_PATH):
         try:
             xl = pd.ExcelFile(UPLOAD_PATH)
