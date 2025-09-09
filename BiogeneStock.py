@@ -57,14 +57,25 @@ inventory_type = st.sidebar.selectbox(
     index=0
 )
 
-# File upload in the sidebar
-uploaded_file = st.sidebar.file_uploader("Upload Excel File", type=["xlsx", "xls"])
+# Password input
+password = st.sidebar.text_input("Enter Password to Upload File", type="password")
 
-# Save the uploaded file, replacing the old one
-if uploaded_file is not None:
-    with open(UPLOAD_PATH, "wb") as f:
-        f.write(uploaded_file.getbuffer())
-    st.sidebar.success("✅ File uploaded & replaced!")
+# Correct password for uploading
+correct_password = "426344"
+
+# Only show upload button if password is correct
+if password == correct_password:
+    # File upload in the sidebar
+    uploaded_file = st.sidebar.file_uploader("Upload Excel File", type=["xlsx", "xls"])
+
+    # Save the uploaded file, replacing the old one
+    if uploaded_file is not None:
+        with open(UPLOAD_PATH, "wb") as f:
+            f.write(uploaded_file.getbuffer())
+        st.sidebar.success("✅ File uploaded & replaced!")
+else:
+    if password:
+        st.sidebar.error("❌ Incorrect password!")
 
 # Main content layout
 col1, col2 = st.columns([2, 1])
