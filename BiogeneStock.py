@@ -1,7 +1,8 @@
 import streamlit as st
 import pandas as pd
 import os
-from datetime import datetime  # Import datetime for timestamp
+from datetime import datetime
+import pytz  # Import pytz for timezone handling
 
 # Config - Apply vibrant theme to the Streamlit app
 st.set_page_config(page_title="Inventory Viewer", layout="wide", initial_sidebar_state="expanded")
@@ -101,8 +102,12 @@ with col1:
             with open(UPLOAD_PATH, "wb") as f:
                 f.write(uploaded_file.getbuffer())
             
-            # Get the current date and time of upload
-            upload_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            # Set timezone (Asia/Kolkata in this example, change as needed)
+            timezone = pytz.timezone("Asia/Kolkata")  # Change to your local timezone
+            current_time = datetime.now(timezone)  # Get current time with the desired timezone
+
+            # Format time as 'YYYY-MM-DD HH:MM:SS'
+            upload_time = current_time.strftime("%Y-%m-%d %H:%M:%S")
             st.session_state.upload_time = upload_time
             save_timestamp(upload_time)  # Save the timestamp to the file
             st.sidebar.success(f"✅ File uploaded & replaced at {upload_time}!")
