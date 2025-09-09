@@ -49,6 +49,7 @@ st.markdown(
 # File paths
 UPLOAD_PATH = "current_inventory.xlsx"
 ITEM_WISE_UPLOAD_PATH = "item_wise_inventory.xlsx"
+TIMESTAMP_PATH = "timestamp.txt"  # Path to store the timestamp
 
 # Sidebar for inventory selection and file upload
 st.sidebar.header("⚙️ **Settings**")
@@ -64,37 +65,53 @@ password = st.sidebar.text_input("Enter Password to Upload File", type="password
 # Correct password for uploading
 correct_password = "426344"
 
-# Initialize upload_time variable
-upload_time = None
+# Function to load the last uploaded timestamp from a file
+def load_timestamp():
+    if os.path.exists(TIMESTAMP_PATH):
+        with open(TIMESTAMP_PATH, "r") as f:
+            return f.read().strip()
+    return "No upload yet."
 
-# Only show upload button if password is correct
-if password == correct_password:
-    # File upload in the sidebar
-    uploaded_file = st.sidebar.file_uploader("Upload Excel File", type=["xlsx", "xls"])
+# Function to save the timestamp to a file
+def save_timestamp(timestamp):
+    with open(TIMESTAMP_PATH, "w") as f:
+        f.write(timestamp)
 
-    # Save the uploaded file, replacing the old one
-    if uploaded_file is not None:
-        with open(UPLOAD_PATH, "wb") as f:
-            f.write(uploaded_file.getbuffer())
-        
-        # Get the current date and time of upload
-        upload_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        st.sidebar.success(f"✅ File uploaded & replaced at {upload_time}!")
-
-else:
-    if password:
-        st.sidebar.error("❌ Incorrect password!")
+# Initialize session state variables
+if 'upload_time' not in st.session_state:
+    st.session_state.upload_time = load_timestamp()  # Load from file if exists
 
 # Main content layout
 col1, col2 = st.columns([2, 1])
 
+# Always display the upload time at the front
 with col1:
     st.subheader("📂 **Inventory Data Viewer**")
-    
-    # Show last upload time if available
-    if upload_time:
-        st.markdown(f"🕒 **Last Uploaded At:** {upload_time}")
 
+    # Display upload time, if the file was uploaded or replaced
+    st.markdown(f"🕒 **Last Updated At:** {st.session_state.upload_time}")
+
+    # Only show upload button if password is correct
+    if password == correct_password:
+        # File upload in the sidebar
+        uploaded_file = st.sidebar.file_uploader("Upload Excel File", type=["xlsx", "xls"])
+
+        # Save the uploaded file, replacing the old one
+        if uploaded_file is not None:
+            with open(UPLOAD_PATH, "wb") as f:
+                f.write(uploaded_file.getbuffer())
+            
+            # Get the current date and time of upload
+            upload_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            st.session_state.upload_time = upload_time
+            save_timestamp(upload_time)  # Save the timestamp to the file
+            st.sidebar.success(f"✅ File uploaded & replaced at {upload_time}!")
+
+    else:
+        if password:
+            st.sidebar.error("❌ Incorrect password!")
+
+    # File processing after upload
     if os.path.exists(UPLOAD_PATH):
         try:
             xl = pd.ExcelFile(UPLOAD_PATH)
