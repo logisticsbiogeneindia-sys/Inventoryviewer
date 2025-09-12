@@ -45,11 +45,12 @@ st.markdown('<div class="title-container"><h1>📦 Biogene India - Inventory Vie
 # -------------------------
 st.sidebar.header("⚙️ Settings")
 inventory_type = st.sidebar.selectbox("Choose Inventory Type", ["Current Inventory", "Item Wise Current Inventory"])
-password = st.sidebar.text_input("Enter Password to Upload File", type="password")
+password = st.sidebar.text_input("Enter Password to Upload/Download File", type="password")
 correct_password = "426344"
 
 UPLOAD_PATH = "current_inventory.xlsx"
 TIMESTAMP_PATH = "timestamp.txt"
+FILENAME_PATH = "uploaded_filename.txt"
 
 def load_timestamp():
     if os.path.exists(TIMESTAMP_PATH):
@@ -61,12 +62,26 @@ def save_timestamp(timestamp):
     with open(TIMESTAMP_PATH, "w") as f:
         f.write(timestamp)
 
+def load_uploaded_filename():
+    if os.path.exists(FILENAME_PATH):
+        with open(FILENAME_PATH, "r") as f:
+            return f.read().strip()
+    return "uploaded_inventory.xlsx"
+
+def save_uploaded_filename(filename):
+    with open(FILENAME_PATH, "w") as f:
+        f.write(filename)
+
 if 'upload_time' not in st.session_state:
     st.session_state.upload_time = load_timestamp()
 
 st.markdown(f"🕒 **Last Updated At:** {st.session_state.upload_time}")
 
+# -------------------------
+# Upload & Download Section
+# -------------------------
 if password == correct_password:
+    # --- Upload option ---
     uploaded_file = st.sidebar.file_uploader("Upload Excel File", type=["xlsx", "xls"])
     if uploaded_file is not None:
         with open(UPLOAD_PATH, "wb") as f:
@@ -75,7 +90,18 @@ if password == correct_password:
         upload_time = datetime.now(timezone).strftime("%Y-%m-%d %H:%M:%S")
         st.session_state.upload_time = upload_time
         save_timestamp(upload_time)
+        save_uploaded_filename(uploaded_file.name)  # save original filename
         st.sidebar.success(f"✅ File uploaded at {upload_time}")
+
+    # --- Download option (last uploaded file) ---
+    if os.path.exists(UPLOAD_PATH):
+        with open(UPLOAD_PATH, "rb") as f:
+            st.sidebar.download_button(
+                label="⬇️ Download Uploaded Excel File",
+                data=f,
+                file_name=load_uploaded_filename(),
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            )
 else:
     if password:
         st.sidebar.error("❌ Incorrect password!")
