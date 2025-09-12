@@ -87,22 +87,18 @@ if os.path.exists(UPLOAD_PATH):
     try:
         xl = pd.ExcelFile(UPLOAD_PATH)
 
-        # --- Load sheet based on dropdown ---
-        sheet_name = "Current Inventory" if inventory_type == "Current Inventory" else "Item Wise Current Inventory"
-        if sheet_name not in xl.sheet_names:
-            st.error(f"❌ Sheet '{sheet_name}' not found in uploaded file!")
-            df = None
+        # --- Only allow these two sheets ---
+        allowed_sheets = [s for s in ["Current Inventory", "Item Wise Current Inventory"] if s in xl.sheet_names]
+
+        if not allowed_sheets:
+            st.error("❌ Neither 'Current Inventory' nor 'Item Wise Current Inventory' sheets found in file!")
         else:
+            # Load main sheet for tabs
+            sheet_name = inventory_type
             df = xl.parse(sheet_name)
             st.success(f"✅ **{sheet_name}** Loaded Successfully!")
 
-        # --- Always load Item Wise sheet for search ---
-        search_df = None
-        if "Item Wise Current Inventory" in xl.sheet_names:
-            search_df = xl.parse("Item Wise Current Inventory")
-
-        # --- Detect 'Check' column in selected sheet ---
-        if df is not None:
+            # Detect 'Check' column
             check_col = find_column(df, ["Check", "Location", "Status", "Type", "StockType"])
 
             # Show 4 tabs always
@@ -125,63 +121,66 @@ if os.path.exists(UPLOAD_PATH):
             else:
                 st.error("❌ Could not find a 'Check' column in this sheet.")
 
-            # --- Search tab (always from Item Wise Current Inventory) ---
+            # --- Search tab ---
             with tab4:
-                st.subheader("🔍 Search in Item Wise Current Inventory")
-                if search_df is None:
-                    st.error("❌ 'Item Wise Current Inventory' sheet not found in the uploaded file.")
-                else:
-                    item_col = find_column(search_df, ["Item Code", "ItemCode", "SKU", "Product Code"])
-                    customer_col = find_column(search_df, ["Customer Name", "CustomerName", "Customer", "CustName"])
-                    brand_col = find_column(search_df, ["Brand", "BrandName", "Product Brand", "Company"])
-                    remarks_col = find_column(search_df, ["Remarks", "Remark", "Notes", "Comments"])
+                st.subheader("🔍 Search Inventory")
 
-                    col1, col2, col3, col4 = st.columns(4)
-                    with col1:
-                        search_item = st.text_input("Search by Item Code").strip()
-                    with col2:
-                        search_customer = st.text_input("Search by Customer Name").strip()
-                    with col3:
-                        search_brand = st.text_input("Search by Brand").strip()
-                    with col4:
-                        search_remarks = st.text_input("Search by Remarks").strip()
+                # ✅ Restrict search only to allowed sheets
+                search_sheet = st.selectbox("Select sheet to search", allowed_sheets, index=0)
+                search_df = xl.parse(search_sheet)
 
-                    df_filtered = search_df.copy()
-                    search_performed = False
+                # Detect possible columns
+                item_col = find_column(search_df, ["Item Code", "ItemCode", "SKU", "Product Code"])
+                customer_col = find_column(search_df, ["Customer Name", "CustomerName", "Customer", "CustName"])
+                brand_col = find_column(search_df, ["Brand", "BrandName", "Product Brand", "Company"])
+                remarks_col = find_column(search_df, ["Remarks", "Remark", "Notes", "Comments"])
 
-                    if search_item:
-                        search_performed = True
-                        if item_col:
-                            df_filtered = df_filtered[df_filtered[item_col].astype(str).str.contains(search_item, case=False, na=False)]
-                        else:
-                            st.error("❌ Could not find an Item Code column in Item Wise sheet.")
+                col1, col2, col3, col4 = st.columns(4)
+                with col1:
+                    search_item = st.text_input("Search by Item Code").strip()
+                with col2:
+                    search_customer = st.text_input("Search by Customer Name").strip()
+                with col3:
+                    search_brand = st.text_input("Search by Brand").strip()
+                with col4:
+                    search_remarks = st.text_input("Search by Remarks").strip()
 
-                    if search_customer:
-                        search_performed = True
-                        if customer_col:
-                            df_filtered = df_filtered[df_filtered[customer_col].astype(str).str.contains(search_customer, case=False, na=False)]
-                        else:
-                            st.error("❌ Could not find a Customer Name column in Item Wise sheet.")
+                df_filtered = search_df.copy()
+                search_performed = False
 
-                    if search_brand:
-                        search_performed = True
-                        if brand_col:
-                            df_filtered = df_filtered[df_filtered[brand_col].astype(str).str.contains(search_brand, case=False, na=False)]
-                        else:
-                            st.error("❌ Could not find a Brand column in Item Wise sheet.")
+                if search_item:
+                    search_performed = True
+                    if item_col:
+                        df_filtered = df_filtered[df_filtered[item_col].astype(str).str.contains(search_item, case=False, na=False)]
+                    else:
+                        st.error("❌ Could not find an Item Code column in this sheet.")
 
-                    if search_remarks:
-                        search_performed = True
-                        if remarks_col:
-                            df_filtered = df_filtered[df_filtered[remarks_col].astype(str).str.contains(search_remarks, case=False, na=False)]
-                        else:
-                            st.error("❌ Could not find a Remarks column in Item Wise sheet.")
+                if search_customer:
+                    search_performed = True
+                    if customer_col:
+                        df_filtered = df_filtered[df_filtered[customer_col].astype(str).str.contains(search_customer, case=False, na=False)]
+                    else:
+                        st.error("❌ Could not find a Customer Name column in this sheet.")
 
-                    if search_performed:
-                        if df_filtered.empty:
-                            st.warning("No matching records found.")
-                        else:
-                            st.dataframe(df_filtered, use_container_width=True)
+                if search_brand:
+                    search_performed = True
+                    if brand_col:
+                        df_filtered = df_filtered[df_filtered[brand_col].astype(str).str.contains(search_brand, case=False, na=False)]
+                    else:
+                        st.error("❌ Could not find a Brand column in this sheet.")
+
+                if search_remarks:
+                    search_performed = True
+                    if remarks_col:
+                        df_filtered = df_filtered[df_filtered[remarks_col].astype(str).str.contains(search_remarks, case=False, na=False)]
+                    else:
+                        st.error("❌ Could not find a Remarks column in this sheet.")
+
+                if search_performed:
+                    if df_filtered.empty:
+                        st.warning("No matching records found.")
+                    else:
+                        st.dataframe(df_filtered, use_container_width=True)
 
     except Exception as e:
         st.error(f"Error reading file: {e}")
