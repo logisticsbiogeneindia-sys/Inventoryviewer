@@ -133,12 +133,18 @@ if os.path.exists(UPLOAD_PATH):
                 else:
                     item_col = find_column(search_df, ["Item Code", "ItemCode", "SKU", "Product Code"])
                     customer_col = find_column(search_df, ["Customer Name", "CustomerName", "Customer", "CustName"])
+                    brand_col = find_column(search_df, ["Brand", "BrandName", "Product Brand", "Company"])
+                    remarks_col = find_column(search_df, ["Remarks", "Remark", "Notes", "Comments"])
 
-                    col1, col2 = st.columns(2)
+                    col1, col2, col3, col4 = st.columns(4)
                     with col1:
                         search_item = st.text_input("Search by Item Code").strip()
                     with col2:
                         search_customer = st.text_input("Search by Customer Name").strip()
+                    with col3:
+                        search_brand = st.text_input("Search by Brand").strip()
+                    with col4:
+                        search_remarks = st.text_input("Search by Remarks").strip()
 
                     df_filtered = search_df.copy()
                     search_performed = False
@@ -156,6 +162,20 @@ if os.path.exists(UPLOAD_PATH):
                             df_filtered = df_filtered[df_filtered[customer_col].astype(str).str.contains(search_customer, case=False, na=False)]
                         else:
                             st.error("❌ Could not find a Customer Name column in Item Wise sheet.")
+
+                    if search_brand:
+                        search_performed = True
+                        if brand_col:
+                            df_filtered = df_filtered[df_filtered[brand_col].astype(str).str.contains(search_brand, case=False, na=False)]
+                        else:
+                            st.error("❌ Could not find a Brand column in Item Wise sheet.")
+
+                    if search_remarks:
+                        search_performed = True
+                        if remarks_col:
+                            df_filtered = df_filtered[df_filtered[remarks_col].astype(str).str.contains(search_remarks, case=False, na=False)]
+                        else:
+                            st.error("❌ Could not find a Remarks column in Item Wise sheet.")
 
                     if search_performed:
                         if df_filtered.empty:
