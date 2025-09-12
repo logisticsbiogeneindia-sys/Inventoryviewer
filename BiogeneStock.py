@@ -1,165 +1,169 @@
 import streamlit as st
 import pandas as pd
 import os
+import re
 from datetime import datetime
-import pytz  # Import pytz for timezone handling
+import pytz
 
-# Config - Apply vibrant theme to the Streamlit app
-st.set_page_config(page_title="Inventory Viewer", layout="wide", initial_sidebar_state="expanded")
-st.title("📦 **Biogene-India Inventory Viewer**")
+# -------------------------
+# Helpers
+# -------------------------
+def normalize(s: str) -> str:
+    return re.sub(r'[^a-z0-9]', '', str(s).lower())
 
-# Apply some custom styles
+def find_column(df: pd.DataFrame, candidates: list) -> str | None:
+    """Find best matching column in df for candidate names."""
+    norm_map = {normalize(col): col for col in df.columns}
+    for cand in candidates:
+        key = normalize(cand)
+        if key in norm_map:
+            return norm_map[key]
+    for cand in candidates:
+        key = normalize(cand)
+        for norm_col, orig in norm_map.items():
+            if key in norm_col or norm_col in key:
+                return orig
+    return None
+
+# -------------------------
+# Config & Styling
+# -------------------------
+st.set_page_config(page_title="Biogene India - Inventory Viewer", layout="wide")
 st.markdown(
     """
     <style>
-        .css-1d391kg { 
-            background-color: #FF6347 !important;
-            color: white;
-            font-size: 30px;
-            font-weight: bold;
-        }
-        .stButton>button {
-            background-color: #32CD32;
-            color: white;
-            font-size: 16px;
-            border-radius: 10px;
-        }
-        .stDataFrame {
-            border: 1px solid #32CD32;
-            padding: 10px;
-            border-radius: 8px;
-        }
-        .css-1v0mbdj {
-            background-color: #FF6347;
-            color: white;
-            font-weight: bold;
-        }
-        /* Custom style for file uploader */
-        .upload-section {
-            position: relative;
-            bottom: 0;
-            left: 0;
-            z-index: 1000;
-            width: 100%;
-            padding: 20px;
-        }
+        body {background-color: #f8f9fa; font-family: "Helvetica Neue", sans-serif;}
+        .title-container {background-color: #004a99; padding: 16px; text-align: center; border-radius: 8px; color: white;}
+        .title-container h1 {font-size: 28px; margin: 0; font-weight: 700;}
     </style>
     """, unsafe_allow_html=True
 )
+st.markdown('<div class="title-container"><h1>📦 Biogene India - Inventory Viewer</h1></div>', unsafe_allow_html=True)
 
-# File paths
-UPLOAD_PATH = "current_inventory.xlsx"
-ITEM_WISE_UPLOAD_PATH = "item_wise_inventory.xlsx"
-TIMESTAMP_PATH = "timestamp.txt"  # Path to store the timestamp
-
-# Sidebar for inventory selection and file upload
-st.sidebar.header("⚙️ **Settings**")
-inventory_type = st.sidebar.selectbox(
-    "Choose Inventory Type",
-    ["Current Inventory", "Item Wise Current Inventory"],
-    index=0
-)
-
-# Password input
+# -------------------------
+# Sidebar
+# -------------------------
+st.sidebar.header("⚙️ Settings")
+inventory_type = st.sidebar.selectbox("Choose Inventory Type", ["Current Inventory", "Item Wise Current Inventory"])
 password = st.sidebar.text_input("Enter Password to Upload File", type="password")
-
-# Correct password for uploading
 correct_password = "426344"
 
-# Function to load the last uploaded timestamp from a file
+UPLOAD_PATH = "current_inventory.xlsx"
+TIMESTAMP_PATH = "timestamp.txt"
+
 def load_timestamp():
     if os.path.exists(TIMESTAMP_PATH):
         with open(TIMESTAMP_PATH, "r") as f:
             return f.read().strip()
     return "No upload yet."
 
-# Function to save the timestamp to a file
 def save_timestamp(timestamp):
     with open(TIMESTAMP_PATH, "w") as f:
         f.write(timestamp)
 
-# Initialize session state variables
 if 'upload_time' not in st.session_state:
-    st.session_state.upload_time = load_timestamp()  # Load from file if exists
+    st.session_state.upload_time = load_timestamp()
 
-# Main content layout
-col1, col2 = st.columns([2, 1])
+st.markdown(f"🕒 **Last Updated At:** {st.session_state.upload_time}")
 
-# Always display the upload time at the front
-with col1:
-    st.subheader("📂 **Inventory Data Viewer**")
+if password == correct_password:
+    uploaded_file = st.sidebar.file_uploader("Upload Excel File", type=["xlsx", "xls"])
+    if uploaded_file is not None:
+        with open(UPLOAD_PATH, "wb") as f:
+            f.write(uploaded_file.getbuffer())
+        timezone = pytz.timezone("Asia/Kolkata")
+        upload_time = datetime.now(timezone).strftime("%Y-%m-%d %H:%M:%S")
+        st.session_state.upload_time = upload_time
+        save_timestamp(upload_time)
+        st.sidebar.success(f"✅ File uploaded at {upload_time}")
+else:
+    if password:
+        st.sidebar.error("❌ Incorrect password!")
 
-    # Display upload time, if the file was uploaded or replaced
-    st.markdown(f"🕒 **Last Updated At:** {st.session_state.upload_time}")
+# -------------------------
+# Load Excel
+# -------------------------
+if os.path.exists(UPLOAD_PATH):
+    try:
+        xl = pd.ExcelFile(UPLOAD_PATH)
 
-    # Only show upload button if password is correct
-    if password == correct_password:
-        # File upload in the sidebar
-        uploaded_file = st.sidebar.file_uploader("Upload Excel File", type=["xlsx", "xls"])
+        # --- Load sheet based on dropdown ---
+        sheet_name = "Current Inventory" if inventory_type == "Current Inventory" else "Item Wise Current Inventory"
+        if sheet_name not in xl.sheet_names:
+            st.error(f"❌ Sheet '{sheet_name}' not found in uploaded file!")
+            df = None
+        else:
+            df = xl.parse(sheet_name)
+            st.success(f"✅ **{sheet_name}** Loaded Successfully!")
 
-        # Save the uploaded file, replacing the old one
-        if uploaded_file is not None:
-            with open(UPLOAD_PATH, "wb") as f:
-                f.write(uploaded_file.getbuffer())
-            
-            # Set timezone (Asia/Kolkata in this example, change as needed)
-            timezone = pytz.timezone("Asia/Kolkata")  # Change to your local timezone
-            current_time = datetime.now(timezone)  # Get current time with the desired timezone
+        # --- Always load Item Wise sheet for search ---
+        search_df = None
+        if "Item Wise Current Inventory" in xl.sheet_names:
+            search_df = xl.parse("Item Wise Current Inventory")
 
-            # Format time as 'YYYY-MM-DD HH:MM:SS'
-            upload_time = current_time.strftime("%Y-%m-%d %H:%M:%S")
-            st.session_state.upload_time = upload_time
-            save_timestamp(upload_time)  # Save the timestamp to the file
-            st.sidebar.success(f"✅ File uploaded & replaced at {upload_time}!")
+        # --- Detect 'Check' column in selected sheet ---
+        if df is not None:
+            check_col = find_column(df, ["Check", "Location", "Status", "Type", "StockType"])
 
-    else:
-        if password:
-            st.sidebar.error("❌ Incorrect password!")
+            # Show 4 tabs always
+            tab1, tab2, tab3, tab4 = st.tabs(["🏠 Local", "🚚 Outstation", "📦 Other", "🔍 Search"])
 
-    # File processing after upload
-    if os.path.exists(UPLOAD_PATH):
-        try:
-            xl = pd.ExcelFile(UPLOAD_PATH)
+            # --- Local / Outstation / Other tabs ---
+            if check_col:
+                check_vals = df[check_col].astype(str).str.strip().str.lower()
+                with tab1:
+                    st.subheader("🏠 Local Inventory")
+                    st.dataframe(df[check_vals == "local"], use_container_width=True)
 
-            if inventory_type == "Current Inventory":
-                sheet_name = "Current Inventory"
-                sheet_display_name = "Current Inventory"
-            elif inventory_type == "Item Wise Current Inventory":
-                sheet_name = "Item Wise Current Inventory"
-                sheet_display_name = "Item Wise Current Inventory"
+                with tab2:
+                    st.subheader("🚚 Outstation Inventory")
+                    st.dataframe(df[check_vals == "outstation"], use_container_width=True)
 
-            if sheet_name in xl.sheet_names:
-                df = xl.parse(sheet_name)
-                st.success(f"✅ **{sheet_display_name}** Loaded Successfully!")
-
-                # Check if 'Check' column exists
-                if "Check" not in df.columns:
-                    st.error("❌ 'Check' column not found in the sheet!")
-                else:
-                    # Split data based on the "Check" column
-                    df_local = df[df["Check"].str.lower() == "local"]
-                    df_outstation = df[df["Check"].str.lower() == "outstation"]
-                    df_rest = df[~df["Check"].str.lower().isin(["local", "outstation"])]
-
-                    # Show in tabs
-                    tab1, tab2, tab3 = st.tabs(["🏠 **Local**", "🚚 **Outstation**", "📦 **Other/OnStock**"])
-
-                    with tab1:
-                        st.subheader("🏠 **Local Inventory**")
-                        st.dataframe(df_local, use_container_width=True)
-
-                    with tab2:
-                        st.subheader("🚚 **Outstation Inventory**")
-                        st.dataframe(df_outstation, use_container_width=True)
-
-                    with tab3:
-                        st.subheader("📦 **Rest Inventory**")
-                        st.dataframe(df_rest, use_container_width=True)
-
+                with tab3:
+                    st.subheader("📦 Other Inventory")
+                    st.dataframe(df[~check_vals.isin(["local", "outstation"])], use_container_width=True)
             else:
-                st.error(f"❌ **'{sheet_display_name}'** sheet not found in uploaded file!")
+                st.error("❌ Could not find a 'Check' column in this sheet.")
 
-        except Exception as e:
-            st.error(f"Error reading Excel file: {e}")
-    else:
-        st.info("📂 **Please upload an Excel file from the sidebar.**")
+            # --- Search tab (always from Item Wise Current Inventory) ---
+            with tab4:
+                st.subheader("🔍 Search in Item Wise Current Inventory")
+                if search_df is None:
+                    st.error("❌ 'Item Wise Current Inventory' sheet not found in the uploaded file.")
+                else:
+                    item_col = find_column(search_df, ["Item Code", "ItemCode", "SKU", "Product Code"])
+                    customer_col = find_column(search_df, ["Customer Name", "CustomerName", "Customer", "CustName"])
+
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        search_item = st.text_input("Search by Item Code").strip()
+                    with col2:
+                        search_customer = st.text_input("Search by Customer Name").strip()
+
+                    df_filtered = search_df.copy()
+                    search_performed = False
+
+                    if search_item:
+                        search_performed = True
+                        if item_col:
+                            df_filtered = df_filtered[df_filtered[item_col].astype(str).str.contains(search_item, case=False, na=False)]
+                        else:
+                            st.error("❌ Could not find an Item Code column in Item Wise sheet.")
+
+                    if search_customer:
+                        search_performed = True
+                        if customer_col:
+                            df_filtered = df_filtered[df_filtered[customer_col].astype(str).str.contains(search_customer, case=False, na=False)]
+                        else:
+                            st.error("❌ Could not find a Customer Name column in Item Wise sheet.")
+
+                    if search_performed:
+                        if df_filtered.empty:
+                            st.warning("No matching records found.")
+                        else:
+                            st.dataframe(df_filtered, use_container_width=True)
+
+    except Exception as e:
+        st.error(f"Error reading file: {e}")
+else:
+    st.info("📂 Please upload an Excel file from the sidebar.")
