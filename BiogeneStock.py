@@ -34,7 +34,7 @@ def find_column(df: pd.DataFrame, candidates: list) -> str | None:
 GITHUB_REPO = "logisticsbiogeneindia-sys/Inventoryviewer"
 FILE_PATH = "Master-Stock Sheet Original.xlsx"   # Excel filename in your repo
 BRANCH = "main"
-TOKEN = st.secrets["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"]  # stored in Streamlit Secrets
+TOKEN = st.secrets["GITHUB_TOKEN"] # stored in Streamlit Secrets
 
 def load_excel_from_github():
     """Always load the latest Excel file from GitHub raw URL."""
