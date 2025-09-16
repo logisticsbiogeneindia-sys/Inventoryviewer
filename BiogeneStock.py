@@ -35,22 +35,68 @@ st.markdown(
     """
     <style>
         body {background-color: #f8f9fa; font-family: "Helvetica Neue", sans-serif;}
-        .title-container {background-color: #004a99; padding: 10px; text-align: center; border-radius: 8px; color: white;}
-        .title-container h1 {font-size: 28px; margin: 0; font-weight: 700;}
-        .footer {position: fixed; left: 0; bottom: 0; width: 100%; background-color: #004a99;
-                 color: white; text-align: center; padding: 8px; font-size: 14px;}
+        .title-container {
+            background-color: #004a99; 
+            padding: 10px; 
+            text-align: center; 
+            border-radius: 8px; 
+            color: white;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        .title-container img {height:50px; margin-right:10px;}
+        .title-container span {font-size: 24px; font-weight: 700;}
+        .footer {
+            position: fixed; left: 0; bottom: 0; width: 100%; background-color: #004a99;
+            color: white; text-align: center; padding: 8px; font-size: 14px;
+        }
     </style>
     """,
     unsafe_allow_html=True
 )
 
 # -------------------------
-# Logo + Title
+# Splash Screen
 # -------------------------
-logo_path = "logonew.png"  # uploaded file
+if "splash_shown" not in st.session_state:
+    st.session_state.splash_shown = False
+
+if not st.session_state.splash_shown:
+    logo_path = "logonew.png"
+    if os.path.exists(logo_path):
+        splash_logo = base64.b64encode(open(logo_path, "rb").read()).decode()
+        st.markdown(
+            f"""
+            <div style="display:flex; justify-content:center; align-items:center; height:100vh; background-color:white;">
+                <img src="data:image/png;base64,{splash_logo}" width="300">
+            </div>
+            <script>
+                setTimeout(() => {{
+                    window.location.reload();
+                }}, 2000);
+            </script>
+            """,
+            unsafe_allow_html=True
+        )
+        st.session_state.splash_shown = True
+        st.stop()
+
+# -------------------------
+# Logo + Title Bar
+# -------------------------
+logo_path = "logonew.png"
 if os.path.exists(logo_path):
-    st.image(logo_path, use_container_width=False, width=400)
-st.markdown('<div class="title-container"><h1>📦 Biogene India - Inventory Viewer</h1></div>', unsafe_allow_html=True)
+    logo_b64 = base64.b64encode(open(logo_path, "rb").read()).decode()
+    st.markdown(
+        f"""
+        <div class="title-container">
+            <img src="data:image/png;base64,{logo_b64}">
+            <span>📦 Biogene India - Inventory Viewer</span>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
 
 # -------------------------
 # Sidebar
@@ -155,7 +201,7 @@ else:
         st.sidebar.error("❌ Incorrect password!")
 
 # -------------------------
-# Load Excel (from GitHub if local missing)
+# Load Excel
 # -------------------------
 if not os.path.exists(UPLOAD_PATH):
     url = f"https://raw.githubusercontent.com/{OWNER}/{REPO}/{BRANCH}/{FILE_PATH.replace(' ', '%20')}"
@@ -204,37 +250,34 @@ else:
         customer_col = find_column(search_df, ["Customer Name", "CustomerName", "Customer", "CustName"])
         brand_col = find_column(search_df, ["Brand", "BrandName", "Product Brand", "Company"])
         remarks_col = find_column(search_df, ["Remarks", "Remark", "Notes", "Comments"])
+
         col1, col2, col3, col4 = st.columns(4)
-        with col1: search_item = st.text_input("Search by Item Code").strip()
-        with col2: search_customer = st.text_input("Search by Customer Name").strip()
-        with col3: search_brand = st.text_input("Search by Brand").strip()
-        with col4: search_remarks = st.text_input("Search by Remarks").strip()
+
+        with col1:
+            search_item = st.selectbox("Search by Item Code", [""] + sorted(search_df[item_col].dropna().astype(str).unique())) if item_col else ""
+        with col2:
+            search_customer = st.selectbox("Search by Customer Name", [""] + sorted(search_df[customer_col].dropna().astype(str).unique())) if customer_col else ""
+        with col3:
+            search_brand = st.selectbox("Search by Brand", [""] + sorted(search_df[brand_col].dropna().astype(str).unique())) if brand_col else ""
+        with col4:
+            search_remarks = st.selectbox("Search by Remarks", [""] + sorted(search_df[remarks_col].dropna().astype(str).unique())) if remarks_col else ""
+
         df_filtered = search_df.copy()
         search_performed = False
+
         if search_item:
             search_performed = True
-            if item_col:
-                df_filtered = df_filtered[df_filtered[item_col].astype(str).str.contains(search_item, case=False, na=False)]
-            else:
-                st.error("❌ Could not find an Item Code column in this sheet.")
+            df_filtered = df_filtered[df_filtered[item_col].astype(str).str.contains(search_item, case=False, na=False)]
         if search_customer:
             search_performed = True
-            if customer_col:
-                df_filtered = df_filtered[df_filtered[customer_col].astype(str).str.contains(search_customer, case=False, na=False)]
-            else:
-                st.error("❌ Could not find a Customer Name column in this sheet.")
+            df_filtered = df_filtered[df_filtered[customer_col].astype(str).str.contains(search_customer, case=False, na=False)]
         if search_brand:
             search_performed = True
-            if brand_col:
-                df_filtered = df_filtered[df_filtered[brand_col].astype(str).str.contains(search_brand, case=False, na=False)]
-            else:
-                st.error("❌ Could not find a Brand column in this sheet.")
+            df_filtered = df_filtered[df_filtered[brand_col].astype(str).str.contains(search_brand, case=False, na=False)]
         if search_remarks:
             search_performed = True
-            if remarks_col:
-                df_filtered = df_filtered[df_filtered[remarks_col].astype(str).str.contains(search_remarks, case=False, na=False)]
-            else:
-                st.error("❌ Could not find a Remarks column in this sheet.")
+            df_filtered = df_filtered[df_filtered[remarks_col].astype(str).str.contains(search_remarks, case=False, na=False)]
+
         if search_performed:
             if df_filtered.empty:
                 st.warning("No matching records found.")
