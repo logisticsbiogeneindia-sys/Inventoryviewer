@@ -58,37 +58,6 @@ else:
     )
 
 # -------------------------
-# Welcome Popup (only once)
-# -------------------------
-if "show_welcome" not in st.session_state:
-    st.session_state.show_welcome = True
-
-if st.session_state.show_welcome:
-    if logo_base64:
-        st.markdown(
-            f"""
-            <div style="position: fixed; top:0; left:0; width:100%; height:100%;
-                        background-color: rgba(0,0,0,0.7); display:flex;
-                        align-items:center; justify-content:center; z-index:9999;">
-                <div style="background:white; padding:30px; border-radius:15px;
-                            text-align:center; max-width:500px; box-shadow:0 4px 12px rgba(0,0,0,0.3);">
-                    <img src="data:image/png;base64,{logo_base64}" style="height:80px; margin-bottom:20px;">
-                    <h2 style="margin-bottom:10px; color:#004a99;">Welcome to Biogene India</h2>
-                    <p style="font-size:16px; color:#333;">
-                        📦 Inventory Management System<br>
-                        Use this portal to view, upload, and manage stock data.
-                    </p>
-                </div>
-            </div>
-            """,
-            unsafe_allow_html=True
-        )
-    if st.button("✅ Continue"):
-        st.session_state.show_welcome = False
-        st.rerun()
-    st.stop()
-
-# -------------------------
 # Sidebar
 # -------------------------
 st.sidebar.header("⚙️ Settings")
