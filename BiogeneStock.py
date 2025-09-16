@@ -15,7 +15,7 @@ st.set_page_config(page_title="Biogene India - Inventory Viewer", layout="wide")
 REPO_OWNER = st.secrets["REPO_OWNER"]
 REPO_NAME = st.secrets["REPO_NAME"]
 GITHUB_TOKEN = st.secrets["GITHUB_TOKEN"]
-FILE_PATH = "data/Master-Stock Sheet Original.xlsx"  # Excel file in repo
+FILE_PATH = "Master-Stock Sheet Original.xlsx"  # Excel file in repo
 
 # -------------------------
 # Helpers
