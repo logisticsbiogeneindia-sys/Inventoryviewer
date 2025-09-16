@@ -45,12 +45,24 @@ st.markdown(
 )
 
 # -------------------------
-# Logo + Title
 # -------------------------
-logo_path = "logonew.png"  # uploaded file
-if os.path.exists(logo_path):
-    st.image(logo_path, use_container_width=False, width=400)
-st.markdown('<div class="title-container"><h1>📦 Biogene India - Inventory Viewer</h1></div>', unsafe_allow_html=True)
+# Logo + Title (Navbar Style)
+# -------------------------
+col1, col2 = st.columns([1, 5])  # Adjust ratio as needed
+
+with col1:
+    if os.path.exists(logo_path):
+        st.image(logo_path, use_container_width=False, width=80)  # smaller logo for navbar look
+
+with col2:
+    st.markdown(
+        """
+        <div class="title-container" style="text-align:left; border-radius:8px; padding:12px;">
+            <h1 style="font-size:26px; margin:0; font-weight:700;">📦 Biogene India - Inventory Viewer</h1>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
 
 # -------------------------
 # Sidebar
@@ -252,4 +264,5 @@ st.markdown(
     """,
     unsafe_allow_html=True
 )
+
 
