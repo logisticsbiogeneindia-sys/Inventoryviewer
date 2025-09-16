@@ -53,12 +53,17 @@ if os.path.exists(logo_path):
 st.markdown('<div class="title-container"><h1>📦 Biogene India - Inventory Viewer</h1></div>', unsafe_allow_html=True)
 
 # -------------------------
+# -------------------------
 # Sidebar
 # -------------------------
 st.sidebar.header("⚙️ Settings")
-inventory_type = st.sidebar.selectbox("Choose Inventory Type", ["Current Inventory", "Item Wise Current Inventory"])
+inventory_type = st.sidebar.selectbox(
+    "Choose Inventory Type",
+    ["Current Inventory", "Item Wise Current Inventory", "Dispatches"]  # 👈 Added Dispatches
+)
 password = st.sidebar.text_input("Enter Password to Upload/Download File", type="password")
 correct_password = "426344"
+
 
 UPLOAD_PATH = "current_inventory.xlsx"
 TIMESTAMP_PATH = "timestamp.txt"
@@ -168,16 +173,21 @@ else:
     xl = pd.ExcelFile(UPLOAD_PATH)
 
 # -------------------------
+# -------------------------
 # Allowed sheets
 # -------------------------
-allowed_sheets = [s for s in ["Current Inventory", "Item Wise Current Inventory"] if s in xl.sheet_names]
+allowed_sheets = [
+    s for s in ["Current Inventory", "Item Wise Current Inventory", "Dispatches"] 
+    if s in xl.sheet_names
+]
 
 if not allowed_sheets:
-    st.error("❌ Neither 'Current Inventory' nor 'Item Wise Current Inventory' sheets found in file!")
+    st.error("❌ Neither 'Current Inventory', 'Item Wise Current Inventory', nor 'Dispatches' sheets found in file!")
 else:
     sheet_name = inventory_type
     df = xl.parse(sheet_name)
     st.success(f"✅ **{sheet_name}** Loaded Successfully!")
+
 
     check_col = find_column(df, ["Check", "Location", "Status", "Type", "StockType"])
     tab1, tab2, tab3, tab4 = st.tabs(["🏠 Local", "🚚 Outstation", "📦 Other", "🔍 Search"])
@@ -252,4 +262,5 @@ st.markdown(
     """,
     unsafe_allow_html=True
 )
+
 
