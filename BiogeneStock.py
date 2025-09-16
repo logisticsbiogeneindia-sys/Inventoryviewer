@@ -57,7 +57,8 @@ st.markdown(
 )
 
 # -------------------------
-# Splash Screen
+# -------------------------
+# Splash Screen with Animation
 # -------------------------
 if "splash_shown" not in st.session_state:
     st.session_state.splash_shown = False
@@ -68,13 +69,30 @@ if not st.session_state.splash_shown:
         splash_logo = base64.b64encode(open(logo_path, "rb").read()).decode()
         st.markdown(
             f"""
-            <div style="display:flex; justify-content:center; align-items:center; height:100vh; background-color:white;">
-                <img src="data:image/png;base64,{splash_logo}" width="300">
+            <style>
+                @keyframes fadeInZoom {{
+                    0%   {{ opacity: 0; transform: scale(0.8); }}
+                    50%  {{ opacity: 1; transform: scale(1.1); }}
+                    100% {{ opacity: 1; transform: scale(1); }}
+                }}
+                .splash-container {{
+                    display: flex;
+                    justify-content: center;
+                    align-items: center;
+                    height: 100vh;
+                    background-color: white;
+                }}
+                .splash-container img {{
+                    animation: fadeInZoom 2.5s ease-in-out forwards;
+                }}
+            </style>
+            <div class="splash-container">
+                <img src="data:image/png;base64,{splash_logo}" width="280">
             </div>
             <script>
                 setTimeout(() => {{
                     window.location.reload();
-                }}, 2000);
+                }}, 2800); // Wait for animation to finish (~2.8s)
             </script>
             """,
             unsafe_allow_html=True
@@ -295,3 +313,4 @@ st.markdown(
     """,
     unsafe_allow_html=True
 )
+
