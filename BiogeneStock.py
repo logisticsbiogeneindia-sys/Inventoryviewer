@@ -31,16 +31,31 @@ def find_column(df: pd.DataFrame, candidates: list) -> str | None:
 # -------------------------
 st.set_page_config(page_title="Biogene India - Inventory Viewer", layout="wide")
 
-# -------------------------
-# Load Logo
-# -------------------------
-logo_path = "logonew.png"  # make sure logo is in your repo
-
+# Load company logo
+logo_path = "logonew.png"  # make sure this file is in the same folder
+logo_base64 = None
 if os.path.exists(logo_path):
     with open(logo_path, "rb") as f:
         logo_base64 = base64.b64encode(f.read()).decode("utf-8")
+
+# Navbar with Logo + Title
+if logo_base64:
+    st.markdown(
+        f"""
+        <div style="display:flex; align-items:center; background-color:#004a99;
+                    padding:12px 20px; border-radius:8px; color:white;">
+            <img src="data:image/png;base64,{logo_base64}" style="height:40px; margin-right:15px;">
+            <h1 style="font-size:24px; margin:0;">📦 Biogene India - Inventory Viewer</h1>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
 else:
-    logo_base64 = ""
+    st.markdown(
+        '<div style="background-color:#004a99; padding:12px; border-radius:8px; color:white; text-align:center;">'
+        '<h1 style="font-size:24px; margin:0;">📦 Biogene India - Inventory Viewer</h1></div>',
+        unsafe_allow_html=True
+    )
 
 # -------------------------
 # Welcome Popup (only once)
@@ -48,47 +63,30 @@ else:
 if "show_welcome" not in st.session_state:
     st.session_state.show_welcome = True
 
-if st.session_state.show_welcome and logo_base64:
-    st.markdown(
-        f"""
-        <div style="position: fixed; top:0; left:0; width:100%; height:100%;
-                    background-color: rgba(0,0,0,0.7); display:flex;
-                    align-items:center; justify-content:center; z-index:9999;">
-            <div style="background:white; padding:30px; border-radius:15px;
-                        text-align:center; max-width:500px; box-shadow:0 4px 12px rgba(0,0,0,0.3);">
-                <img src="data:image/png;base64,{logo_base64}" style="height:80px; margin-bottom:20px;">
-                <h2 style="margin-bottom:10px; color:#004a99;">Welcome to Biogene India</h2>
-                <p style="font-size:16px; color:#333;">
-                    📦 Inventory Management System<br>
-                    Use this portal to view, upload, and manage stock data.
-                </p>
-                <button onclick="window.parent.document.querySelector('iframe').contentWindow.location.reload()"
-                        style="margin-top:15px; padding:10px 20px; border:none; border-radius:8px;
-                               background:#004a99; color:white; font-size:16px; cursor:pointer;">
-                    Continue
-                </button>
+if st.session_state.show_welcome:
+    if logo_base64:
+        st.markdown(
+            f"""
+            <div style="position: fixed; top:0; left:0; width:100%; height:100%;
+                        background-color: rgba(0,0,0,0.7); display:flex;
+                        align-items:center; justify-content:center; z-index:9999;">
+                <div style="background:white; padding:30px; border-radius:15px;
+                            text-align:center; max-width:500px; box-shadow:0 4px 12px rgba(0,0,0,0.3);">
+                    <img src="data:image/png;base64,{logo_base64}" style="height:80px; margin-bottom:20px;">
+                    <h2 style="margin-bottom:10px; color:#004a99;">Welcome to Biogene India</h2>
+                    <p style="font-size:16px; color:#333;">
+                        📦 Inventory Management System<br>
+                        Use this portal to view, upload, and manage stock data.
+                    </p>
+                </div>
             </div>
-        </div>
-        """,
-        unsafe_allow_html=True
-    )
+            """,
+            unsafe_allow_html=True
+        )
+    if st.button("✅ Continue"):
+        st.session_state.show_welcome = False
+        st.rerun()
     st.stop()
-
-# -------------------------
-# Navbar (Logo + Title)
-# -------------------------
-st.markdown(
-    f"""
-    <div style="display: flex; align-items: center; justify-content: center;
-                background-color: #004a99; padding: 12px; border-radius: 8px;">
-        {'<img src="data:image/png;base64,'+logo_base64+'" style="height:55px; margin-right:15px;">' if logo_base64 else ""}
-        <h1 style="color: white; font-size: 28px; margin: 0; font-weight: 700;">
-            📦 Biogene India - Inventory Viewer
-        </h1>
-    </div>
-    """,
-    unsafe_allow_html=True
-)
 
 # -------------------------
 # Sidebar
@@ -178,9 +176,11 @@ if os.path.exists(UPLOAD_PATH):
                 with tab1:
                     st.subheader("🏠 Local Inventory")
                     st.dataframe(df[check_vals == "local"], use_container_width=True)
+
                 with tab2:
                     st.subheader("🚚 Outstation Inventory")
                     st.dataframe(df[check_vals == "outstation"], use_container_width=True)
+
                 with tab3:
                     st.subheader("📦 Other Inventory")
                     st.dataframe(df[~check_vals.isin(["local", "outstation"])], use_container_width=True)
@@ -189,6 +189,7 @@ if os.path.exists(UPLOAD_PATH):
 
             with tab4:
                 st.subheader("🔍 Search Inventory")
+
                 search_sheet = st.selectbox("Select sheet to search", allowed_sheets, index=0)
                 search_df = xl.parse(search_sheet)
 
@@ -216,18 +217,21 @@ if os.path.exists(UPLOAD_PATH):
                         df_filtered = df_filtered[df_filtered[item_col].astype(str).str.contains(search_item, case=False, na=False)]
                     else:
                         st.error("❌ Could not find an Item Code column in this sheet.")
+
                 if search_customer:
                     search_performed = True
                     if customer_col:
                         df_filtered = df_filtered[df_filtered[customer_col].astype(str).str.contains(search_customer, case=False, na=False)]
                     else:
                         st.error("❌ Could not find a Customer Name column in this sheet.")
+
                 if search_brand:
                     search_performed = True
                     if brand_col:
                         df_filtered = df_filtered[df_filtered[brand_col].astype(str).str.contains(search_brand, case=False, na=False)]
                     else:
                         st.error("❌ Could not find a Brand column in this sheet.")
+
                 if search_remarks:
                     search_performed = True
                     if remarks_col:
@@ -251,9 +255,9 @@ else:
 # -------------------------
 st.markdown(
     """
-    <hr style="margin-top: 50px; margin-bottom: 10px;">
-    <div style="text-align: center; color: gray; font-size: 14px;">
-        © 2025 Biogene India Pvt. Ltd. | Inventory Management System
+    <hr style="margin-top:40px; margin-bottom:10px;">
+    <div style="text-align:center; color:gray; font-size:14px;">
+        © 2025 Biogene India Pvt Ltd | Inventory Viewer
     </div>
     """,
     unsafe_allow_html=True
