@@ -135,7 +135,7 @@ if password == correct_password:
         with open(UPLOAD_PATH, "wb") as f:
             f.write(uploaded_file.getbuffer())
         timezone = pytz.timezone("Asia/Kolkata")
-        upload_time = datetime.now(timezone).strftime("%Y-%m-%d %H:%M:%S")
+        upload_time = datetime.now(timezone).strftime("%d-%m-%Y %H:%M:%S")
         st.session_state.upload_time = upload_time
         save_timestamp(upload_time)
         save_uploaded_filename(uploaded_file.name)
@@ -252,3 +252,4 @@ st.markdown(
     """,
     unsafe_allow_html=True
 )
+
