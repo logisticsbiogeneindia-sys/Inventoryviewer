@@ -35,34 +35,54 @@ st.markdown(
     """
     <style>
         body {background-color: #f8f9fa; font-family: "Helvetica Neue", sans-serif;}
-        .title-container {background-color: #004a99; padding: 10px; text-align: center; border-radius: 8px; color: white;}
-        .title-container h1 {font-size: 28px; margin: 0; font-weight: 700;}
-        .footer {position: fixed; left: 0; bottom: 0; width: 100%; background-color: #004a99;
-                 color: white; text-align: center; padding: 8px; font-size: 14px;}
+        .navbar {
+            display: flex;
+            align-items: center;
+            background-color: #004a99;
+            padding: 8px 16px;
+            border-radius: 8px;
+            color: white;
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+        }
+        .navbar img {
+            height: 50px;
+            margin-right: 15px;
+        }
+        .navbar h1 {
+            font-size: 24px;
+            margin: 0;
+            font-weight: 700;
+        }
+        .footer {
+            position: fixed; left: 0; bottom: 0; width: 100%;
+            background-color: #004a99; color: white; text-align: center;
+            padding: 8px; font-size: 14px;
+        }
     </style>
     """,
     unsafe_allow_html=True
 )
 
 # -------------------------
+# Logo + Title Navbar
 # -------------------------
-# Logo + Title (Navbar Style)
-# -------------------------
-col1, col2 = st.columns([1, 5])  # Adjust ratio as needed
+logo_path = "logonew.png"  # uploaded file
+if os.path.exists(logo_path):
+    logo_html = f'<img src="data:image/png;base64,{base64.b64encode(open(logo_path,"rb").read()).decode()}" alt="Logo">'
+else:
+    logo_html = ""
 
-with col1:
-    if os.path.exists(logo_path):
-        st.image(logo_path, use_container_width=False, width=80)  # smaller logo for navbar look
-
-with col2:
-    st.markdown(
-        """
-        <div class="title-container" style="text-align:left; border-radius:8px; padding:12px;">
-            <h1 style="font-size:26px; margin:0; font-weight:700;">📦 Biogene India - Inventory Viewer</h1>
-        </div>
-        """,
-        unsafe_allow_html=True
-    )
+st.markdown(
+    f"""
+    <div class="navbar">
+        {logo_html}
+        <h1>📦 Biogene India - Inventory Viewer</h1>
+    </div>
+    """,
+    unsafe_allow_html=True
+)
 
 # -------------------------
 # Sidebar
@@ -264,5 +284,3 @@ st.markdown(
     """,
     unsafe_allow_html=True
 )
-
-
