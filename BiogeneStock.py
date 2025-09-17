@@ -1,8 +1,3 @@
-I apologize for the error in the previous code. The `SyntaxError` occurred because the `try` block for handling the file upload was missing its corresponding `except` block.
-
-Here is the corrected and complete code for your `BiogeneStock.py` file. I have added the necessary `except` block to handle potential issues when reading the Excel file.
-
-```python
 import streamlit as st
 import pandas as pd
 import os
@@ -154,4 +149,3 @@ st.markdown(
     """,
     unsafe_allow_html=True
 )
-```
