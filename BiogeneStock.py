@@ -6,6 +6,7 @@ from datetime import datetime
 import pytz
 import requests
 import base64
+import io
 
 # -------------------------
 # Helpers
@@ -96,30 +97,19 @@ UPLOAD_PATH = "current_inventory.xlsx"
 TIMESTAMP_PATH = "timestamp.txt"
 FILENAME_PATH = "uploaded_filename.txt"
 
-def load_timestamp():
-    if os.path.exists(TIMESTAMP_PATH):
-        with open(TIMESTAMP_PATH, "r") as f:
-            return f.read().strip()
-    return "No upload yet."
-
 def save_timestamp(timestamp):
     with open(TIMESTAMP_PATH, "w") as f:
         f.write(timestamp)
+
+def save_uploaded_filename(filename):
+    with open(FILENAME_PATH, "w") as f:
+        f.write(filename)
 
 def load_uploaded_filename():
     if os.path.exists(FILENAME_PATH):
         with open(FILENAME_PATH, "r") as f:
             return f.read().strip()
     return "uploaded_inventory.xlsx"
-
-def save_uploaded_filename(filename):
-    with open(FILENAME_PATH, "w") as f:
-        f.write(filename)
-
-if 'upload_time' not in st.session_state:
-    st.session_state.upload_time = load_timestamp()
-
-st.markdown(f"🕒 **Last Updated:** {st.session_state.upload_time}")
 
 # -------------------------
 # GitHub Config
@@ -130,7 +120,10 @@ BRANCH = "main"
 FILE_PATH = "Master-Stock Sheet Original.xlsx"
 
 TOKEN = st.secrets["GITHUB_TOKEN"]
-headers = {"Authorization": f"token {TOKEN}"}
+headers = {
+    "Authorization": f"Bearer {TOKEN}",
+    "Accept": "application/vnd.github+json"
+}
 
 def check_github_auth():
     r = requests.get("https://api.github.com/user", headers=headers)
@@ -162,7 +155,7 @@ def push_to_github(local_file, remote_path, commit_message="Update file"):
         st.sidebar.error(f"Error pushing file {local_file}: {e}")
 
 # -------------------------
-# GitHub Timestamp (from timestamp.txt file)
+# GitHub Timestamp (always used)
 # -------------------------
 def get_github_file_timestamp():
     try:
@@ -176,7 +169,7 @@ def get_github_file_timestamp():
         return f"Error fetching timestamp: {e}"
 
 github_timestamp = get_github_file_timestamp()
-st.markdown(f"📂 **File Updated** {github_timestamp}")
+st.markdown(f"🕒 **Last Updated (from GitHub):** {github_timestamp}")
 
 # -------------------------
 # Upload & Download Section
@@ -188,10 +181,9 @@ if password == correct_password:
         with open(UPLOAD_PATH, "wb") as f:
             f.write(uploaded_file.getbuffer())
 
-        # Save timestamp locally
+        # Save timestamp locally and push
         timezone = pytz.timezone("Asia/Kolkata")
         upload_time = datetime.now(timezone).strftime("%d-%m-%Y %H:%M:%S")
-        st.session_state.upload_time = upload_time
         save_timestamp(upload_time)
         save_uploaded_filename(uploaded_file.name)
 
@@ -221,7 +213,9 @@ else:
 if not os.path.exists(UPLOAD_PATH):
     url = f"https://raw.githubusercontent.com/{OWNER}/{REPO}/{BRANCH}/{FILE_PATH.replace(' ', '%20')}"
     try:
-        xl = pd.ExcelFile(url)
+        r = requests.get(url)
+        r.raise_for_status()
+        xl = pd.ExcelFile(io.BytesIO(r.content))
     except Exception as e:
         st.error(f"❌ Error loading Excel from GitHub: {e}")
         st.stop()
@@ -247,13 +241,13 @@ else:
         check_vals = df[check_col].astype(str).str.strip().str.lower()
         with tab1:
             st.subheader("🏠 Local Inventory")
-            st.dataframe(df[check_vals == "local"], use_container_width=True)
+            st.dataframe(df[check_vals == "local"], use_container_width=True, height=600)
         with tab2:
             st.subheader("🚚 Outstation Inventory")
-            st.dataframe(df[check_vals == "outstation"], use_container_width=True)
+            st.dataframe(df[check_vals == "outstation"], use_container_width=True, height=600)
         with tab3:
             st.subheader("📦 Other Inventory")
-            st.dataframe(df[~check_vals.isin(["local", "outstation"])], use_container_width=True)
+            st.dataframe(df[~check_vals.isin(["local", "outstation"])], use_container_width=True, height=600)
     else:
         st.error("❌ Could not find a 'Check' column in this sheet.")
 
@@ -275,32 +269,32 @@ else:
         if search_item:
             search_performed = True
             if item_col:
-                df_filtered = df_filtered[df_filtered[item_col].astype(str).str.contains(search_item, case=False, na=False)]
+                df_filtered = df_filtered[df_filtered[item_col].astype(str).str.contains(search_item, case=False, regex=False, na=False)]
             else:
                 st.error("❌ Could not find an Item Code column in this sheet.")
         if search_customer:
             search_performed = True
             if customer_col:
-                df_filtered = df_filtered[df_filtered[customer_col].astype(str).str.contains(search_customer, case=False, na=False)]
+                df_filtered = df_filtered[df_filtered[customer_col].astype(str).str.contains(search_customer, case=False, regex=False, na=False)]
             else:
                 st.error("❌ Could not find a Customer Name column in this sheet.")
         if search_brand:
             search_performed = True
             if brand_col:
-                df_filtered = df_filtered[df_filtered[brand_col].astype(str).str.contains(search_brand, case=False, na=False)]
+                df_filtered = df_filtered[df_filtered[brand_col].astype(str).str.contains(search_brand, case=False, regex=False, na=False)]
             else:
                 st.error("❌ Could not find a Brand column in this sheet.")
         if search_remarks:
             search_performed = True
             if remarks_col:
-                df_filtered = df_filtered[df_filtered[remarks_col].astype(str).str.contains(search_remarks, case=False, na=False)]
+                df_filtered = df_filtered[df_filtered[remarks_col].astype(str).str.contains(search_remarks, case=False, regex=False, na=False)]
             else:
                 st.error("❌ Could not find a Remarks column in this sheet.")
         if search_performed:
             if df_filtered.empty:
                 st.warning("No matching records found.")
             else:
-                st.dataframe(df_filtered, use_container_width=True)
+                st.dataframe(df_filtered, use_container_width=True, height=600)
 
 # -------------------------
 # Footer
@@ -313,4 +307,3 @@ st.markdown(
     """,
     unsafe_allow_html=True
 )
-
