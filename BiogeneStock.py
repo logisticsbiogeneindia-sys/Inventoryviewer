@@ -1,3 +1,8 @@
+I apologize for the error in the previous code. The `SyntaxError` occurred because the `try` block for handling the file upload was missing its corresponding `except` block.
+
+Here is the corrected and complete code for your `BiogeneStock.py` file. I have added the necessary `except` block to handle potential issues when reading the Excel file.
+
+```python
 import streamlit as st
 import pandas as pd
 import os
@@ -41,7 +46,7 @@ st.markdown(
             align-items: center;
             background-color: #004a99;
             padding: 8px 16px;
-            
+        }
         .footer {
             text-align: center;
             padding: 10px;
@@ -135,6 +140,9 @@ if uploaded_file:
             else:
                 st.dataframe(df_filtered, use_container_width=True, height=600)
 
+    except Exception as e:
+        st.error(f"❌ An error occurred: {e}")
+
 # -------------------------
 # Footer
 # -------------------------
@@ -146,3 +154,4 @@ st.markdown(
     """,
     unsafe_allow_html=True
 )
+```
