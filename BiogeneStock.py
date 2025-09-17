@@ -119,7 +119,7 @@ def save_uploaded_filename(filename):
 if 'upload_time' not in st.session_state:
     st.session_state.upload_time = load_timestamp()
 
-st.markdown(f"🕒 **Last Updated At:** {st.session_state.upload_time}")
+st.markdown(f"🕒 **Last Updated At (Local):** {st.session_state.upload_time}")
 
 # -------------------------
 # GitHub Config
@@ -140,11 +140,14 @@ def check_github_auth():
         st.sidebar.error(f"❌ GitHub Auth failed: {r.status_code}")
 check_github_auth()
 
-def push_to_github(local_file, commit_message="Update Excel file"):
+# -------------------------
+# Push to GitHub
+# -------------------------
+def push_to_github(local_file, remote_path, commit_message="Update file"):
     try:
         with open(local_file, "rb") as f:
             content = base64.b64encode(f.read()).decode("utf-8")
-        url = f"https://api.github.com/repos/{OWNER}/{REPO}/contents/{FILE_PATH}"
+        url = f"https://api.github.com/repos/{OWNER}/{REPO}/contents/{remote_path}"
         r = requests.get(url, headers=headers)
         sha = r.json().get("sha") if r.status_code == 200 else None
         payload = {"message": commit_message, "content": content, "branch": BRANCH}
@@ -152,11 +155,28 @@ def push_to_github(local_file, commit_message="Update Excel file"):
             payload["sha"] = sha
         r = requests.put(url, headers=headers, json=payload)
         if r.status_code in [200, 201]:
-            st.sidebar.success("✅ Excel file pushed to GitHub successfully!")
+            st.sidebar.success(f"✅ {os.path.basename(local_file)} pushed to GitHub successfully!")
         else:
-            st.sidebar.error(f"❌ GitHub push failed: {r.json()}")
+            st.sidebar.error(f"❌ GitHub push failed for {local_file}: {r.json()}")
     except Exception as e:
-        st.sidebar.error(f"Error pushing file: {e}")
+        st.sidebar.error(f"Error pushing file {local_file}: {e}")
+
+# -------------------------
+# GitHub Timestamp (from timestamp.txt file)
+# -------------------------
+def get_github_file_timestamp():
+    try:
+        url = f"https://raw.githubusercontent.com/{OWNER}/{REPO}/{BRANCH}/timestamp.txt"
+        r = requests.get(url)
+        if r.status_code == 200:
+            return r.text.strip()
+        else:
+            return "No GitHub timestamp found."
+    except Exception as e:
+        return f"Error fetching timestamp: {e}"
+
+github_timestamp = get_github_file_timestamp()
+st.markdown(f"📂 **Last Updated At (GitHub):** {github_timestamp}")
 
 # -------------------------
 # Upload & Download Section
@@ -164,16 +184,25 @@ def push_to_github(local_file, commit_message="Update Excel file"):
 if password == correct_password:
     uploaded_file = st.sidebar.file_uploader("Upload Excel File", type=["xlsx", "xls"])
     if uploaded_file is not None:
+        # Save Excel file locally
         with open(UPLOAD_PATH, "wb") as f:
             f.write(uploaded_file.getbuffer())
+
+        # Save timestamp locally
         timezone = pytz.timezone("Asia/Kolkata")
         upload_time = datetime.now(timezone).strftime("%d-%m-%Y %H:%M:%S")
         st.session_state.upload_time = upload_time
         save_timestamp(upload_time)
         save_uploaded_filename(uploaded_file.name)
-        st.sidebar.success(f"✅ File uploaded at {upload_time}")
-        push_to_github(UPLOAD_PATH, commit_message=f"Uploaded {uploaded_file.name}")
 
+        # Show success
+        st.sidebar.success(f"✅ File uploaded at {upload_time}")
+
+        # Push both Excel + Timestamp to GitHub
+        push_to_github(UPLOAD_PATH, FILE_PATH, commit_message=f"Uploaded {uploaded_file.name}")
+        push_to_github(TIMESTAMP_PATH, "timestamp.txt", commit_message="Updated timestamp")
+
+    # Download button for uploaded file
     if os.path.exists(UPLOAD_PATH):
         with open(UPLOAD_PATH, "rb") as f:
             st.sidebar.download_button(
