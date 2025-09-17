@@ -119,7 +119,7 @@ def save_uploaded_filename(filename):
 if 'upload_time' not in st.session_state:
     st.session_state.upload_time = load_timestamp()
 
-st.markdown(f"🕒 **Last Updated At (Local):** {st.session_state.upload_time}")
+st.markdown(f"🕒 **Last Updated:** {st.session_state.upload_time}")
 
 # -------------------------
 # GitHub Config
@@ -176,7 +176,7 @@ def get_github_file_timestamp():
         return f"Error fetching timestamp: {e}"
 
 github_timestamp = get_github_file_timestamp()
-st.markdown(f"📂 **Last Updated At (GitHub):** {github_timestamp}")
+st.markdown(f"📂 **File Updated** {github_timestamp}")
 
 # -------------------------
 # Upload & Download Section
@@ -313,3 +313,4 @@ st.markdown(
     """,
     unsafe_allow_html=True
 )
+
