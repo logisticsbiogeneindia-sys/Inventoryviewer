@@ -89,7 +89,7 @@ st.markdown(
 # Sidebar
 # -------------------------
 st.sidebar.header("⚙️ Settings")
-inventory_type = st.sidebar.selectbox("Choose Inventory Type", ["Current Inventory", "Item Wise Current Inventory"])
+inventory_type = st.sidebar.selectbox("Choose Inventory Type", ["Current Inventory", "Item Wise Current Inventory", "Dispatches"])
 password = st.sidebar.text_input("Enter Password to Upload/Download File", type="password")
 correct_password = "426344"
 
@@ -225,7 +225,7 @@ else:
 # -------------------------
 # Allowed sheets
 # -------------------------
-allowed_sheets = [s for s in ["Current Inventory", "Item Wise Current Inventory"] if s in xl.sheet_names]
+allowed_sheets = [s for s in ["Current Inventory", "Item Wise Current Inventory", "Dispatches"] if s in xl.sheet_names]
 
 if not allowed_sheets:
     st.error("❌ Neither 'Current Inventory' nor 'Item Wise Current Inventory' sheets found in file!")
