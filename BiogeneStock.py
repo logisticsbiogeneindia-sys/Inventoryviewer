@@ -240,7 +240,9 @@ else:
         item_col = find_column(search_df, ["Item Code", "ItemCode", "SKU", "Product Code"])
         customer_col = find_column(search_df, ["Customer Name", "CustomerName", "Customer", "CustName"])
         brand_col = find_column(search_df, ["Brand", "BrandName", "Product Brand", "Company"])
-        remarks_col = find_column(search_df, ["Remarks", "Remark", "Notes", "Comments"])        col1, col2, col3, col4, col5 = st.columns(5)
+        remarks_col = find_column(search_df, ["Remarks", "Remark", "Notes", "Comments"])
+col1, col2, col3, col4, col5 = st.columns(5)
+
         with col1:
             search_item = st.text_input("Search by Item Code").strip()
         with col2:
@@ -307,3 +309,4 @@ st.markdown("""
         © 2025 Biogene India | Created By Mohit Sharma
     </div>
 """, unsafe_allow_html=True)
+
