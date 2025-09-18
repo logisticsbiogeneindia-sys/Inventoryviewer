@@ -259,7 +259,7 @@ else:
         customer_col = find_column(search_df, ["Customer Name", "CustomerName", "Customer", "CustName"])
         brand_col = find_column(search_df, ["Brand", "BrandName", "Product Brand", "Company"])
         remarks_col = find_column(search_df, ["Remarks", "Remark", "Notes", "Comments"])
-        col1, col2, col3, col4, col5 = st.columns(4)
+        col1, col2, col3, col4, col5 = st.columns(5)
         with col1: search_item = st.text_input("Search by Item Code").strip()
         with col2: search_customer = st.text_input("Search by Customer Name").strip()
         with col3: search_brand = st.text_input("Search by Brand").strip()
@@ -308,3 +308,4 @@ st.markdown(
     """,
     unsafe_allow_html=True
 )
+
