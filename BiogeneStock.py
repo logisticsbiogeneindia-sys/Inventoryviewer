@@ -259,38 +259,63 @@ else:
         customer_col = find_column(search_df, ["Customer Name", "CustomerName", "Customer", "CustName"])
         brand_col = find_column(search_df, ["Brand", "BrandName", "Product Brand", "Company"])
         remarks_col = find_column(search_df, ["Remarks", "Remark", "Notes", "Comments"])
+        date_col = find_column(search_df, ["Date", "Dispatch Date", "Invoice Date", "Order Date"])
+
         col1, col2, col3, col4, col5 = st.columns(5)
         with col1: search_item = st.text_input("Search by Item Code").strip()
         with col2: search_customer = st.text_input("Search by Customer Name").strip()
         with col3: search_brand = st.text_input("Search by Brand").strip()
         with col4: search_remarks = st.text_input("Search by Remarks").strip()
-        with col5: Search_ByDate = st.text_input("Search by Date").strip()
+        with col5: Search_ByDate = st.text_input("Search by Date (DD-MM-YYYY)").strip()
+
         df_filtered = search_df.copy()
         search_performed = False
+
         if search_item:
             search_performed = True
             if item_col:
                 df_filtered = df_filtered[df_filtered[item_col].astype(str).str.contains(search_item, case=False, regex=False, na=False)]
             else:
                 st.error("❌ Could not find an Item Code column in this sheet.")
+
         if search_customer:
             search_performed = True
             if customer_col:
                 df_filtered = df_filtered[df_filtered[customer_col].astype(str).str.contains(search_customer, case=False, regex=False, na=False)]
             else:
                 st.error("❌ Could not find a Customer Name column in this sheet.")
+
         if search_brand:
             search_performed = True
             if brand_col:
                 df_filtered = df_filtered[df_filtered[brand_col].astype(str).str.contains(search_brand, case=False, regex=False, na=False)]
             else:
                 st.error("❌ Could not find a Brand column in this sheet.")
+
         if search_remarks:
             search_performed = True
             if remarks_col:
                 df_filtered = df_filtered[df_filtered[remarks_col].astype(str).str.contains(search_remarks, case=False, regex=False, na=False)]
             else:
                 st.error("❌ Could not find a Remarks column in this sheet.")
+
+        if Search_ByDate:
+            search_performed = True
+            if date_col:
+                try:
+                    # Convert column to datetime
+                    df_filtered[date_col] = pd.to_datetime(df_filtered[date_col], errors="coerce")
+                    # Parse user input
+                    search_date = pd.to_datetime(Search_ByDate, errors="coerce", dayfirst=True)
+                    if pd.isna(search_date):
+                        st.error("❌ Invalid date format! Please use DD-MM-YYYY or YYYY-MM-DD")
+                    else:
+                        df_filtered = df_filtered[df_filtered[date_col].dt.date == search_date.date()]
+                except Exception as e:
+                    st.error(f"❌ Error filtering by date: {e}")
+            else:
+                st.error("❌ Could not find a Date column in this sheet.")
+
         if search_performed:
             if df_filtered.empty:
                 st.warning("No matching records found.")
@@ -308,4 +333,3 @@ st.markdown(
     """,
     unsafe_allow_html=True
 )
-
