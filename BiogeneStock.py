@@ -242,7 +242,7 @@ else:
         brand_col = find_column(search_df, ["Brand", "BrandName", "Product Brand", "Company"])
         remarks_col = find_column(search_df, ["Remarks", "Remark", "Notes", "Comments"])
 
-       col1, col2, col3, col4, col5 = st.columns(5)
+              col1, col2, col3, col4, col5 = st.columns(5)
         with col1:
             search_item = st.text_input("Search by Item Code").strip()
         with col2:
