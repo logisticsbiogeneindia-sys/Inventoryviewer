@@ -30,9 +30,10 @@ def find_column(df: pd.DataFrame, candidates: list) -> str | None:
 # -------------------------
 # Config & Styling
 # -------------------------
-st.set_page_config(page_title="Biogene India - Inventory & Dispatch Viewer", layout="wide")
+st.set_page_config(page_title="Biogene India - Inventory Viewer", layout="wide")
 
-st.markdown("""
+st.markdown(
+    """
     <style>
         body {background-color: #f8f9fa; font-family: "Helvetica Neue", sans-serif;}
         .navbar {
@@ -61,31 +62,37 @@ st.markdown("""
             padding: 8px; font-size: 14px;
         }
     </style>
-""", unsafe_allow_html=True)
+    """,
+    unsafe_allow_html=True
+)
 
 # -------------------------
 # Logo + Title Navbar
 # -------------------------
-logo_path = "logonew.png"
+logo_path = "logonew.png"  # uploaded file
 if os.path.exists(logo_path):
     logo_html = f'<img src="data:image/png;base64,{base64.b64encode(open(logo_path,"rb").read()).decode()}" alt="Logo">'
 else:
     logo_html = ""
 
-st.markdown(f"""
+st.markdown(
+    f"""
     <div class="navbar">
         {logo_html}
-        <h1>🚚 Biogene India - Inventory & Dispatch Viewer</h1>
+        <h1>📦 Biogene India - Inventory Viewer</h1>
     </div>
-""", unsafe_allow_html=True)
+    """,
+    unsafe_allow_html=True
+)
 
 # -------------------------
 # Sidebar
 # -------------------------
 st.sidebar.header("⚙️ Settings")
-inventory_type = st.sidebar.selectbox("Choose Inventory Type", ["Current Inventory", "Item Wise Current Inventory", "Dispatches"])
+inventory_type = st.sidebar.selectbox("Choose Inventory Type", ["Current Inventory", "Item Wise Current Inventory"])
 password = st.sidebar.text_input("Enter Password to Upload/Download File", type="password")
 correct_password = "426344"
+
 UPLOAD_PATH = "current_inventory.xlsx"
 TIMESTAMP_PATH = "timestamp.txt"
 FILENAME_PATH = "uploaded_filename.txt"
@@ -104,13 +111,48 @@ def load_uploaded_filename():
             return f.read().strip()
     return "uploaded_inventory.xlsx"
 
+# -------------------------
 # GitHub Config
+# -------------------------
 OWNER = "logisticsbiogeneindia-sys"
 REPO = "Inventoryviewer"
 BRANCH = "main"
 FILE_PATH = "Master-Stock Sheet Original.xlsx"
+
 TOKEN = st.secrets["GITHUB_TOKEN"]
-headers = {"Authorization": f"Bearer {TOKEN}", "Accept": "application/vnd.github+json"}
+headers = {
+    "Authorization": f"Bearer {TOKEN}",
+    "Accept": "application/vnd.github+json"
+}
+
+def check_github_auth():
+    r = requests.get("https://api.github.com/user", headers=headers)
+    if r.status_code == 200:
+        st.sidebar.success(f"🔑 GitHub Auth OK: {r.json().get('login')}")
+    else:
+        st.sidebar.error(f"❌ GitHub Auth failed: {r.status_code}")
+check_github_auth()
+
+# -------------------------
+# Push to GitHub
+# -------------------------
+def push_to_github(local_file, remote_path, commit_message="Update file"):
+    try:
+        with open(local_file, "rb") as f:
+            content = base64.b64encode(f.read()).decode("utf-8")
+        url = f"https://api.github.com/repos/{OWNER}/{REPO}/contents/{remote_path}"
+        r = requests.get(url, headers=headers)
+        sha = r.json().get("sha") if r.status_code == 200 else None
+        payload = {"message": commit_message, "content": content, "branch": BRANCH}
+        if sha:
+            payload["sha"] = sha
+        r = requests.put(url, headers=headers, json=payload)
+        if r.status_code in [200, 201]:
+            st.sidebar.success(f"✅ {os.path.basename(local_file)} pushed to GitHub successfully!")
+        else:
+            st.sidebar.error(f"❌ GitHub push failed for {local_file}: {r.json()}")
+    except Exception as e:
+        st.sidebar.error(f"Error pushing file {local_file}: {e}")
 
 # -------------------------
 # GitHub Timestamp (always used)
@@ -130,7 +172,43 @@ github_timestamp = get_github_file_timestamp()
 st.markdown(f"🕒 **Last Updated (from GitHub):** {github_timestamp}")
 
 # -------------------------
-# File Load (Dispatches only)
+# Upload & Download Section
+# -------------------------
+if password == correct_password:
+    uploaded_file = st.sidebar.file_uploader("Upload Excel File", type=["xlsx", "xls"])
+    if uploaded_file is not None:
+        # Save Excel file locally
+        with open(UPLOAD_PATH, "wb") as f:
+            f.write(uploaded_file.getbuffer())
+
+        # Save timestamp locally and push
+        timezone = pytz.timezone("Asia/Kolkata")
+        upload_time = datetime.now(timezone).strftime("%d-%m-%Y %H:%M:%S")
+        save_timestamp(upload_time)
+        save_uploaded_filename(uploaded_file.name)
+
+        # Show success
+        st.sidebar.success(f"✅ File uploaded at {upload_time}")
+
+        # Push both Excel + Timestamp to GitHub
+        push_to_github(UPLOAD_PATH, FILE_PATH, commit_message=f"Uploaded {uploaded_file.name}")
+        push_to_github(TIMESTAMP_PATH, "timestamp.txt", commit_message="Updated timestamp")
+
+    # Download button for uploaded file
+    if os.path.exists(UPLOAD_PATH):
+        with open(UPLOAD_PATH, "rb") as f:
+            st.sidebar.download_button(
+                label="⬇️ Download Uploaded Excel File",
+                data=f,
+                file_name=load_uploaded_filename(),
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            )
+else:
+    if password:
+        st.sidebar.error("❌ Incorrect password!")
+
+# -------------------------
+# Load Excel (from GitHub if local missing)
 # -------------------------
 if not os.path.exists(UPLOAD_PATH):
     url = f"https://raw.githubusercontent.com/{OWNER}/{REPO}/{BRANCH}/{FILE_PATH.replace(' ', '%20')}"
@@ -144,71 +222,11 @@ if not os.path.exists(UPLOAD_PATH):
 else:
     xl = pd.ExcelFile(UPLOAD_PATH)
 
-if "Dispatches" not in xl.sheet_names:
-    st.error("❌ 'Dispatches' sheet not found in Excel file!")
-    st.stop()
-
-df = xl.parse("Dispatches")
-st.success("✅ Dispatches Sheet Loaded Successfully!")
-
 # -------------------------
-# Column Detection (Dispatches)
+# Allowed sheets
 # -------------------------
-date_col = find_column(df, ["Date", "Dispatch Date", "Invoice Date", "Order Date"])
-customer_col = find_column(df, ["Customer Name", "Customer", "CustName"])
-awb_col = find_column(df, ["AWB", "AWB Number", "Tracking Number", "Docket No"])
+allowed_sheets = [s for s in ["Current Inventory", "Item Wise Current Inventory"] if s in xl.sheet_names]
 
-if not date_col or not customer_col or not awb_col:
-    st.error("❌ Required columns not found (Date, Customer Name, AWB). Please check the Excel file.")
-    st.stop()
-
-df[date_col] = pd.to_datetime(df[date_col], errors="coerce", dayfirst=True)
-
-# -------------------------
-# Search Filters (Dispatches)
-# -------------------------
-st.subheader("🔍 Search Dispatches")
-
-col1, col2, col3 = st.columns(3)
-with col1:
-    start_date = st.date_input("From Date")
-with col2:
-    end_date = st.date_input("To Date")
-with col3:
-    search_customer = st.text_input("Search by Customer Name").strip()
-
-awb_search = st.text_input("Search by AWB Number").strip()
-
-df_filtered = df.copy()
-
-# Apply filters for dispatches
-if start_date and end_date:
-    df_filtered = df_filtered[
-        (df_filtered[date_col].dt.date >= start_date) & 
-        (df_filtered[date_col].dt.date <= end_date)
-    ]
-
-if search_customer:
-    df_filtered = df_filtered[df_filtered[customer_col].astype(str).str.contains(search_customer, case=False, na=False)]
-
-if awb_search:
-    df_filtered = df_filtered[df_filtered[awb_col].astype(str).str.contains(awb_search, case=False, na=False)]
-
-if not df_filtered.empty:
-    df_filtered[date_col] = df_filtered[date_col].dt.strftime("%d/%m/%Y")
-
-# -------------------------
-# Show Results (Dispatches)
-# -------------------------
-if df_filtered.empty:
-    st.warning("⚠️ No matching records found.")
-else:
-    st.dataframe(df_filtered, use_container_width=True, height=600)
-
-# -------------------------
-# Inventory Viewer (Current Inventory)
-# -------------------------
-allowed_sheets = [s for s in ["Current Inventory", "Item Wise Current Inventory", "Dispatches"] if s in xl.sheet_names]
 if not allowed_sheets:
     st.error("❌ Neither 'Current Inventory' nor 'Item Wise Current Inventory' sheets found in file!")
 else:
@@ -233,77 +251,59 @@ else:
     else:
         st.error("❌ Could not find a 'Check' column in this sheet.")
 
-       with tab4:
+    with tab4:
         st.subheader("🔍 Search Inventory")
         search_sheet = st.selectbox("Select sheet to search", allowed_sheets, index=0)
         search_df = xl.parse(search_sheet)
-
         item_col = find_column(search_df, ["Item Code", "ItemCode", "SKU", "Product Code"])
         customer_col = find_column(search_df, ["Customer Name", "CustomerName", "Customer", "CustName"])
         brand_col = find_column(search_df, ["Brand", "BrandName", "Product Brand", "Company"])
         remarks_col = find_column(search_df, ["Remarks", "Remark", "Notes", "Comments"])
-
         col1, col2, col3, col4 = st.columns(4)
-        with col1:
-            search_item = st.text_input("Search by Item Code").strip()
-        with col2:
-            search_customer = st.text_input("Search by Customer Name").strip()
-        with col3:
-            search_brand = st.text_input("Search by Brand").strip()
-        with col4:
-            search_remarks = st.text_input("Search by Remarks").strip()
-
+        with col1: search_item = st.text_input("Search by Item Code").strip()
+        with col2: search_customer = st.text_input("Search by Customer Name").strip()
+        with col3: search_brand = st.text_input("Search by Brand").strip()
+        with col4: search_remarks = st.text_input("Search by Remarks").strip()
         df_filtered = search_df.copy()
         search_performed = False
-
-        # Item Code Filter
         if search_item:
             search_performed = True
             if item_col:
                 df_filtered = df_filtered[df_filtered[item_col].astype(str).str.contains(search_item, case=False, regex=False, na=False)]
             else:
                 st.error("❌ Could not find an Item Code column in this sheet.")
-        
-        # Customer Name Filter
         if search_customer:
             search_performed = True
             if customer_col:
                 df_filtered = df_filtered[df_filtered[customer_col].astype(str).str.contains(search_customer, case=False, regex=False, na=False)]
             else:
                 st.error("❌ Could not find a Customer Name column in this sheet.")
-
-        # Brand Filter
         if search_brand:
             search_performed = True
             if brand_col:
                 df_filtered = df_filtered[df_filtered[brand_col].astype(str).str.contains(search_brand, case=False, regex=False, na=False)]
             else:
                 st.error("❌ Could not find a Brand column in this sheet.")
-        
-        # Remarks Filter
         if search_remarks:
             search_performed = True
             if remarks_col:
                 df_filtered = df_filtered[df_filtered[remarks_col].astype(str).str.contains(search_remarks, case=False, regex=False, na=False)]
             else:
                 st.error("❌ Could not find a Remarks column in this sheet.")
-        
-        # Display Search Results
         if search_performed:
             if df_filtered.empty:
-                st.warning("⚠️ No matching records found.")
+                st.warning("No matching records found.")
             else:
                 st.dataframe(df_filtered, use_container_width=True, height=600)
-
 
 # -------------------------
 # Footer
 # -------------------------
-st.markdown("""
+st.markdown(
+    """
     <div class="footer">
         © 2025 Biogene India | Created By Mohit Sharma
     </div>
-""", unsafe_allow_html=True)
-
-
-
+    """,
+    unsafe_allow_html=True
+)
