@@ -3,7 +3,6 @@ import pandas as pd
 import os
 import re
 from datetime import datetime
-import pytz
 import requests
 import base64
 import io
@@ -127,8 +126,8 @@ if not date_col or not customer_col or not awb_col:
     st.error("❌ Required columns not found (Date, Customer Name, AWB). Please check the Excel file.")
     st.stop()
 
-# Ensure Date column is datetime
-df[date_col] = pd.to_datetime(df[date_col], errors="coerce")
+# Ensure Date column is datetime (dayfirst=True for dd/mm/yyyy)
+df[date_col] = pd.to_datetime(df[date_col], errors="coerce", dayfirst=True)
 
 # -------------------------
 # Search Filters
@@ -161,6 +160,10 @@ if search_customer:
 # Apply AWB filter
 if awb_search:
     df_filtered = df_filtered[df_filtered[awb_col].astype(str).str.contains(awb_search, case=False, na=False)]
+
+# Format date column as dd/mm/yyyy for display
+if not df_filtered.empty:
+    df_filtered[date_col] = df_filtered[date_col].dt.strftime("%d/%m/%Y")
 
 # -------------------------
 # Show Results
