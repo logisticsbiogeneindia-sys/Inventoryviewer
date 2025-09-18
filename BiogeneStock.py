@@ -233,24 +233,26 @@ else:
     else:
         st.error("❌ Could not find a 'Check' column in this sheet.")
 
-    with tab4:
-        st.subheader("🔍 Search Inventory")
-        search_sheet = st.selectbox("Select sheet to search", allowed_sheets, index=0)
-        search_df = xl.parse(search_sheet)
-        item_col = find_column(search_df, ["Item Code", "ItemCode", "SKU", "Product Code"])
-        customer_col = find_column(search_df, ["Customer Name", "CustomerName", "Customer", "CustName"])
-        brand_col = find_column(search_df, ["Brand", "BrandName", "Product Brand", "Company"])
-        remarks_col = find_column(search_df, ["Remarks", "Remark", "Notes", "Comments"])
-col1, col2, col3, col4, col5 = st.columns(5)
+   with tab4:
+    st.subheader("🔍 Search Inventory")
+    search_sheet = st.selectbox("Select sheet to search", allowed_sheets, index=0)
+    search_df = xl.parse(search_sheet)
 
-        with col1:
-            search_item = st.text_input("Search by Item Code").strip()
-        with col2:
-            search_customer = st.text_input("Search by Customer Name").strip()
-        with col3:
-            search_brand = st.text_input("Search by Brand").strip()
-        with col4:
-            search_remarks = st.text_input("Search by Remarks").strip()
+    item_col = find_column(search_df, ["Item Code", "ItemCode", "SKU", "Product Code"])
+    customer_col = find_column(search_df, ["Customer Name", "CustomerName", "Customer", "CustName"])
+    brand_col = find_column(search_df, ["Brand", "BrandName", "Product Brand", "Company"])
+    remarks_col = find_column(search_df, ["Remarks", "Remark", "Notes", "Comments"])
+
+    col1, col2, col3, col4 = st.columns(4)
+    with col1:
+        search_item = st.text_input("Search by Item Code").strip()
+    with col2:
+        search_customer = st.text_input("Search by Customer Name").strip()
+    with col3:
+        search_brand = st.text_input("Search by Brand").strip()
+    with col4:
+        search_remarks = st.text_input("Search by Remarks").strip()
+
         with col5:
             Search_ByDate = st.text_input("Search by Date").strip()
 
@@ -309,4 +311,5 @@ st.markdown("""
         © 2025 Biogene India | Created By Mohit Sharma
     </div>
 """, unsafe_allow_html=True)
+
 
